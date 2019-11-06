@@ -15,8 +15,10 @@ import paho.mqtt.client as mqtt
 from DetectStopSign import *
 from DetectLines    import *
 
-MQTT_BROKER = "10.0.1.15"
-MQTT_PORT   = 1883
+# MQTT_BROKER = "10.0.1.15"
+MQTT_BROKER = "localhost"
+# MQTT_PORT   = 1883
+MQTT_PORT   = 17090
 MQTT_QOS    = 1
 
 MQTT_TOPIC = "c0/s/c/0"
@@ -92,7 +94,7 @@ class ShowFrames():
         self.started = True
         self.thread  = Thread(target = self.showImage, args = ())
         self.thread.start()
- 
+
         return self
 
     def showImage(self):
@@ -101,101 +103,12 @@ class ShowFrames():
             while(self.run):
                 gray  = self.client.gray
                 image = self.client.image
-                
-                if(image is not None):    
-                    wImage = image.shape[0]
-                    hImage = image.shape[1]
 
-                    x1, y1 = (0,          wImage)
-                    x2, y2 = (hImage / 2, wImage / 2)
-                    x3, y3 = (hImage,     wImage)
-
-                    verticesRegionOfInterest = [
-                        (x1, y1),
-                        (x2, y2),
-                        (x3, y3),
-                    ]
-
-                    # Convert to grayscale here.
-                    grayImage = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-
-                    # Call Canny Edge Detection here.
-                    cannyedImage = cv2.Canny(grayImage, 100, 200)
-
-                    # Moved the cropping operation to the end of the pipeline.
-                    croppedImage = self.detectLineObj.cropImage(
-                        cannyedImage,
-                        numpy.array([verticesRegionOfInterest], numpy.int32)
-                    )
-
-                    cv2.imshow('Image', croppedImage)
-
-                    lines = cv2.HoughLinesP(
-                        croppedImage,
-                        rho           = 10,
-                        theta         = numpy.pi / 180,
-                        threshold     = 160,
-                        lines         = numpy.array([]),
-                        minLineLength = 40,
-                        maxLineGap    = 25
-                    )
-
-                    # print(" > [Script] Lines: " + str(lines))
-
-                    xLeftLine  = []
-                    yLeftLine  = []
-                    xRightLine = []
-                    yRightLine = []
-
-                    if(lines is not None):
-                        for line in lines:
-                            for x1, y1, x2, y2 in line:
-                                # The slope of a line is a number that describes both the direction and the steepness of the line
-                                slope = (y2 - y1) / (x2 - x1)
-                                
-                                # Only consider theta > 26º
-                                if math.fabs(slope) < 0.5:
-                                    continue
-                                
-                                # Since the slope is negative, the direction of the line is decreasing => right line
-                                if slope <= 0:
-                                    xRightLine.extend([x1, x2])
-                                    yRightLine.extend([y1, y2])
-                                # Otherwise => left line.
-                                else: 
-                                    xLeftLine.extend([x1, x2])
-                                    yLeftLine.extend([y1, y2])
-
-                        if(len(xLeftLine) != 0 and len(yLeftLine) != 0 and len(xRightLine) != 0 and len(yRightLine) != 0):
-                            minY = image.shape[0] * (6 / 10) # Just below the horizon
-                            maxY = image.shape[0]           # The bottom of the image
-
-                            polyLeft = numpy.poly1d(numpy.polyfit(
-                                yLeftLine,
-                                xLeftLine,
-                                deg = 1
-                            ))
-
-                            leftStartX = int(polyLeft(maxY))
-                            leftEndX   = int(polyLeft(minY))
-
-                            polyRight = numpy.poly1d(numpy.polyfit(
-                                yRightLine,
-                                xRightLine,
-                                deg = 1
-                            ))
-
-                            rightStartX = int(polyRight(maxY))
-                            rightEndX   = int(polyRight(minY))
-
-                            image = self.detectLineObj.drawLinesInImage(
-                                image,
-                                [[
-                                    [leftStartX,  maxY, leftEndX,  int(minY)],
-                                    [rightStartX, maxY, rightEndX, int(minY)],
-                                ]],
-                                thicknessLine = 5
-                            )
+                if(image is not None):
+                    #
+                    self.detectLineObj.ProcessFrame(image)
+                    #
+                    image = self.detectLineObj.DrawLinesInImage(image)
 
                     # Identify STOP SIGN in frame
                     stopSignObjs = self.detectStopSignObj.detect(self.cascade, gray, image)
@@ -204,7 +117,7 @@ class ShowFrames():
                         x1, y1 = x_pos,         y_pos
                         x2, y2 = x_pos + width, y_pos + height
                         cv2.rectangle(image, (x1,     y1),     (x2,     y2),     (255, 255, 255), 2)
-                        cv2.rectangle(image, (x1 + 3, y1 + 3), (x2 - 3, y2 - 3), (  0,   0, 255), 2)               
+                        cv2.rectangle(image, (x1 + 3, y1 + 3), (x2 - 3, y2 - 3), (  0,   0, 255), 2)
 
                     # Show Frame
                     cv2.imshow('Image', image)
