@@ -76,9 +76,10 @@ class MQTTClient():
 
 class ShowFrames():
 
-    detectLineObj     = DetectLines()
-    detectStopSignObj = DetectStopSign()
-    cascade           = cv2.CascadeClassifier("cascades/cascade.xml")
+    # detectLineObj     = DetectLines()
+    # detectStopSignObj = DetectStopSign()
+    car     = Car.Car()
+    cascade = cv2.CascadeClassifier("cascades/cascade.xml")
 
     def __init__(self, client):
         self.client   = client
@@ -105,22 +106,28 @@ class ShowFrames():
                 image = self.client.image
 
                 if(image is not None):
-                    #
-                    self.detectLineObj.ProcessFrame(image)
-                    #
-                    image = self.detectLineObj.DrawLinesInImage(image)
+                    # #
+                    # self.detectLineObj.ProcessFrame(image)
+                    # #
+                    # image = self.detectLineObj.DrawLinesInImage(image)
 
-                    # Identify STOP SIGN in frame
-                    stopSignObjs = self.detectStopSignObj.detect(self.cascade, gray, image)
-                    # Draw a rectangle around the objects found
-                    for (x_pos, y_pos, width, height) in stopSignObjs:
-                        x1, y1 = x_pos,         y_pos
-                        x2, y2 = x_pos + width, y_pos + height
-                        cv2.rectangle(image, (x1,     y1),     (x2,     y2),     (255, 255, 255), 2)
-                        cv2.rectangle(image, (x1 + 3, y1 + 3), (x2 - 3, y2 - 3), (  0,   0, 255), 2)
+
+                    car.Drive(frame)
+        
+                    frame = car.GetImage(1)
+
+
+                    # # Identify STOP SIGN in frame
+                    # stopSignObjs = self.detectStopSignObj.detect(self.cascade, gray, image)
+                    # # Draw a rectangle around the objects found
+                    # for (x_pos, y_pos, width, height) in stopSignObjs:
+                    #     x1, y1 = x_pos,         y_pos
+                    #     x2, y2 = x_pos + width, y_pos + height
+                    #     cv2.rectangle(image, (x1,     y1),     (x2,     y2),     (255, 255, 255), 2)
+                    #     cv2.rectangle(image, (x1 + 3, y1 + 3), (x2 - 3, y2 - 3), (  0,   0, 255), 2)
 
                     # Show Frame
-                    cv2.imshow('Image', image)
+                    cv2.imshow('Image', frame)
 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     print(" > [ShowFrames] Thread Stopped")
